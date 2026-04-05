@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haiba — Share Music, Share Feeling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="HAIBA.png" type="image/png">
+</head>
+<body>
+
+<div class="noise"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="app" id="app">
+  <nav>
+    <a class="logo" href="#" onclick="navigate('home',event)">
+      <img class="logo-icon" src="HAIBA.png" alt="Haiba logo" />
+      Haiba
+    </a>
+    <div class="nav-center">
+      <button class="nav-link active" id="nav-home" onclick="navigate('home')">Home</button>
+      <button class="nav-link" id="nav-browse" onclick="navigate('browse')">Browse</button>
+      <button class="nav-link" id="nav-about" onclick="navigate('about')">About</button>
+    </div>
+    <div class="nav-actions">
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☽</button>
+      <button class="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+
+  <div class="mobile-menu" id="mobile-menu">
+    <button class="mobile-nav-link active" id="mnav-home" onclick="navigate('home');closeMobileMenu()">Home</button>
+    <button class="mobile-nav-link" id="mnav-browse" onclick="navigate('browse');closeMobileMenu()">Browse</button>
+    <button class="mobile-nav-link" id="mnav-about" onclick="navigate('about');closeMobileMenu()">About</button>
+  </div>
+
+  <div id="loading-screen" class="loading-screen" style="display:none">
+    <div class="loading-notes">
+      <div class="loading-note"></div><div class="loading-note"></div><div class="loading-note"></div><div class="loading-note"></div><div class="loading-note"></div>
+    </div>
+    <p style="color:var(--muted);font-size:0.9rem">Loading your message…</p>
+  </div>
+
+  <div id="page-home" class="page active">
+    <section class="hero">
+      <div class="hero-tag"><span></span>Share music. Share feeling.</div>
+      <h1>Send a song with<br /><em>something to say</em></h1>
+      <p class="hero-sub">Pair a song with a heartfelt message. Generate a unique link and share it with someone who matters.</p>
+    </section>
+    <div class="form-wrapper">
+      <div class="card">
+        <div class="form-content" id="form-content">
+          <div class="form-grid">
+            <div class="field-row">
+              <div class="field">
+                <label>From <span class="opt">(optional)</span></label>
+                <input type="text" id="from-name" placeholder="Your name…" maxlength="60" />
+              </div>
+              <div class="field" id="field-to">
+                <label>To</label>
+                <input type="text" id="to-name" placeholder="Their name…" maxlength="60" />
+                <span class="error-msg">Please enter the receiver's name</span>
+              </div>
+            </div>
+            <div class="field" id="field-msg">
+              <label>Your message</label>
+              <textarea id="message" placeholder="Write something from the heart…"></textarea>
+              <span class="error-msg">Please write a message</span>
+            </div>
+            <div class="field" id="field-song">
+              <label>Song <span class="opt">— search Spotify</span></label>
+              <div id="spotify-not-configured" class="spotify-creds-notice" style="display:none">
+                ⚠ Add your Spotify credentials at the top of the script (<code>SPOTIFY_CLIENT_ID</code> &amp; <code>SPOTIFY_CLIENT_SECRET</code>). Get them free at <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com</a>.
+              </div>
+              <div id="spotify-ui">
+                <div id="selected-song-preview" class="selected-song-preview">
+                  <img id="selected-art" src="" alt="" style="display:none" />
+                  <div class="s-info">
+                    <div class="s-name" id="selected-name"></div>
+                    <div class="s-artist" id="selected-artist"></div>
+                  </div>
+                  <button class="clear-song" onclick="clearSong()" title="Remove">✕</button>
+                </div>
+                <div id="spotify-search-area">
+                  <div class="spotify-search-input-row">
+                    <input type="text" id="spotify-query" placeholder="Search for a song or artist…" onkeydown="if(event.key==='Enter')searchSpotify()" />
+                    <button class="btn btn-ghost search-trigger" onclick="searchSpotify()">Search</button>
+                  </div>
+                  <div class="spotify-results" id="spotify-results"></div>
+                </div>
+              </div>
+              <span class="error-msg">Please select a song</span>
+              <div class="embed-preview-block" id="embed-preview-block">
+                <iframe id="embed-preview" height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Photo <span class="opt">(optional) — shown on opening screen</span></label>
+              <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('image-file-input').click()">
+                <input type="file" id="image-file-input" accept="image/*" style="display:none" onchange="handleImageUpload(event)" />
+                <div class="image-upload-placeholder" id="image-upload-placeholder">
+                  <div class="upload-icon">🖼</div>
+                  <div class="upload-text">Click to upload a photo</div>
+                  <div class="upload-sub">JPG, PNG, GIF — max 30MB</div>
+                </div>
+                <div class="image-preview-wrap" id="image-preview-wrap" style="display:none">
+                  <img id="image-preview-img" src="" alt="Preview" />
+                  <button class="clear-image-btn" onclick="clearImage(event)" title="Remove">✕</button>
+                </div>
+              </div>
+              <span class="error-msg" id="image-error-msg"></span>
+            </div>
+
+            <div class="send-row">
+              <button class="btn btn-ghost preview-btn" onclick="showPreviewModal()">Preview</button>
+              <button class="btn btn-primary" id="send-btn" onclick="submitForm()">
+                <span class="btn-label">Send the Song ♪</span>
+                <div class="loader"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="success-screen" id="success-screen">
+          <div class="success-icon">♫</div>
+          <div class="success-title">It's sent!</div>
+          <p class="success-sub">Share this link — whenever they open it, your song will play.</p>
+          <div class="link-box">
+            <input type="text" id="share-link" readonly />
+            <button class="btn btn-ghost copy-btn" onclick="copyLink()">Copy</button>
+          </div>
+          <button class="btn btn-ghost email-via-btn" onclick="showEmailModal()">✉ Send via Email</button>
+          <button class="send-another" onclick="resetForm()">Send another →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-browse" class="page">
+    <div class="browse-page">
+      <div class="page-title">Browse</div>
+      <p class="page-subtitle">Search for messages sent to someone by name.</p>
+      <div class="browse-search-bar">
+        <input type="text" id="browse-input" placeholder="Type a receiver's name…" onkeydown="if(event.key==='Enter')browseSearch()" />
+        <button class="btn btn-primary browse-search-btn" onclick="browseSearch()">Search</button>
+      </div>
+      <div class="browse-results" id="browse-results">
+        <div class="browse-empty"><div>♪</div><p>Search a name to find messages sent to them.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-about" class="page">
+    <div class="about-page">
+      <div class="about-logo">Haiba</div>
+      <p class="about-tagline">A simple way to send someone a song that says what words can't. Pair music with a message, share a link, and let them feel it.</p>
+      <div class="about-section">
+        <h2>How it works</h2>
+        <div class="about-steps">
+          <div class="about-step"><div class="step-num">1</div><div class="step-body"><h3>Pick a song</h3><p>Search Spotify directly inside Haiba — no copy-pasting links, no leaving the page.</p></div></div>
+          <div class="about-step"><div class="step-num">2</div><div class="step-body"><h3>Write your message</h3><p>Tell them why this song reminded you of them. It can be long, short, poetic, or just honest.</p></div></div>
+          <div class="about-step"><div class="step-num">3</div><div class="step-body"><h3>Add a photo</h3><p>Optionally add a photo — it'll be revealed with a cinematic curtain effect when they open your message.</p></div></div>
+          <div class="about-step"><div class="step-num">4</div><div class="step-body"><h3>Share the link</h3><p>Every message gets its own unique link. Send it over text, DM, or email — wherever feels right.</p></div></div>
+          <div class="about-step"><div class="step-num">5</div><div class="step-body"><h3>They open it</h3><p>They see your message and the song plays right there. No app needed, no account required.</p></div></div>
+        </div>
+      </div>
+      <div class="about-section">
+        <h2>Why Haiba?</h2>
+        <p>Music carries weight that words alone sometimes can't. A song can say "I miss you", "I'm proud of you", or "you're not alone" better than any sentence. Haiba is built around that idea — helping people share something real.</p>
+        <p>Every message sent through Haiba is browsable. It's a living archive of small moments between people.</p>
+      </div>
+      <div class="about-cta">
+        <h2>Ready to send one?</h2>
+        <p>It takes less than a minute. Find the song, write what you feel, share the link.</p>
+        <button class="btn btn-primary" onclick="navigate('home')">Send a Song ♪</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view-screen" id="view-screen">
+    <div id="view-content"></div>
+  </div>
+
+  <footer>Made with ♪ by <a href="#">Haiba</a> · Share music, share feeling.</footer>
+</div>
+
+<div class="modal-overlay" id="preview-modal" onclick="closePreviewModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closePreviewModal()">✕</button>
+    <div class="modal-title">Preview</div>
+    <p class="modal-sub" id="preview-modal-sub">Here's how your message will look to them.</p>
+    <div id="preview-modal-content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="info-modal" onclick="closeInfoModal(event)">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeInfoModal()">✕</button>
+    <div class="info-modal-icon">♪</div>
+    <div class="modal-title" style="text-align:center">Heads up</div>
+    <p class="modal-sub" id="info-modal-msg" style="text-align:center;margin-bottom:24px"></p>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeInfoModal()">Got it</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="email-modal" onclick="closeEmailModal(event)">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeEmailModal()">✕</button>
+    <div class="email-modal-icon">✉</div>
+    <div class="modal-title" style="text-align:center">Send via Email</div>
+    <p class="modal-sub" style="text-align:center;margin-bottom:22px">Enter the receiver's email and we'll send them the link with your song.</p>
+    <div id="email-modal-form">
+      <div class="field" style="margin-bottom:14px">
+        <label>Receiver's Email</label>
+        <input type="email" id="email-modal-input" placeholder="their@email.com" onkeydown="if(event.key==='Enter')sendEmailModal()" />
+        <span style="color:var(--error);font-size:0.82rem;display:none" id="email-modal-error">Please enter a valid email address</span>
+      </div>
+      <button class="btn btn-primary" id="email-modal-send-btn" style="width:100%;justify-content:center;padding:14px" onclick="sendEmailModal()">
+        <span class="btn-label">Send Email ✉</span>
+        <div class="loader"></div>
+      </button>
+    </div>
+    <div id="email-modal-success" style="display:none;flex-direction:column;align-items:center;gap:12px;padding:16px 0">
+      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:22px">✉</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.2rem">Email sent!</div>
+      <div style="font-size:0.85rem;color:var(--muted)">Delivered to <strong id="email-modal-sent-to" style="color:var(--text)"></strong></div>
+      <button class="btn btn-ghost" style="margin-top:8px" onclick="closeEmailModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="intro-overlay" id="intro-overlay" style="display:none">
+  <div class="curtain-container" id="curtain-container" style="display:none">
+    <div class="curtain-img-wrap" id="curtain-img-wrap">
+      <img class="curtain-img" id="curtain-img" src="" alt="" />
+    </div>
+    <div class="curtain curtain-left" id="curtain-left"></div>
+    <div class="curtain curtain-right" id="curtain-right"></div>
+    <div class="curtain-overlay-text" id="curtain-overlay-text">
+      <div class="curtain-from" id="curtain-from"></div>
+      <div class="curtain-label">sent you a song</div>
+    </div>
+  </div>
+
+
+  <div class="intro-modal" id="intro-modal-inner">
+    <div class="intro-particles">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="intro-icon-wrap">
+      <div class="intro-ring"></div>
+      <div class="intro-icon">♫</div>
+    </div>
+    <div class="intro-from" id="intro-from">Someone</div>
+    <div class="intro-label">sent you a song</div>
+    <div class="intro-song-info" id="intro-song-info"></div>
+    <button class="intro-btn" onclick="closeIntro()">
+      <span>Open your song</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="intro-haiba">via Haiba ♪</div>
+  </div>
+
+
+  <div class="curtain-cta" id="curtain-cta" style="display:none">
+    <div class="intro-song-info" id="curtain-song-info"></div>
+    <button class="intro-btn curtain-open-btn" onclick="closeIntro()">
+      <span>Open your song</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="intro-haiba">via Haiba ♪</div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copy-toast">Link copied! ✓</div>
+
+<script src="script.js"></script>
+</body>
+</html>
